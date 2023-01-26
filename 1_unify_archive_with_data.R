@@ -15,7 +15,7 @@ nombres <- read.xlsx("G:/Cristian_data/Humboldt/Git/Unif_biological_data_-set16-
 ### 
 ## Open download data to compare with BioModelos Format
 outDir_gbif <- paste0(dir,'/GBIF&SiB/raw/Descarga_2022_01_13_directGBIF/')
-gbif<-fread (paste0(dir,"/GBIF&SiB/raw/Descarga_2022_01_13_directGBIF/0112920-210914110416597/filteredOcc2.1.txt"), encoding = 'UTF-8') #file with GBIF data
+gbif<-fread (paste0(dir,"/GBIF&SiB/raw/Descarga_2023_01_23_directGBIF/0255995-220831081235567/filteredOcc.txt"), encoding = 'UTF-8') #file with GBIF data
 
 #1 .column names original files
 nombres.current2 <- nombres[grep('GBIF', nombres[, 1]), -1]
@@ -34,17 +34,15 @@ colnames(gb.i)<- finColnames3
 gbif<-gb.i
 
 ###2. Export data set 
-rm(outDir_gbif, nombres.current2, oriColnames2,finColnames2, oriColnames3, finColnames3, gb.i)
 write.csv(gbif, paste0(outDir_gbif,'filteredOcc2.csv'), row.names = F)
+rm(outDir_gbif, nombres.current2, oriColnames2,finColnames2, oriColnames3, finColnames3, gb.i, bd); gc()
+
 
 ######################
 ##### SpeciesLink
 #######################
 bd<-"speciesLink"
-setwd(paste0(dir,"/",bd, "/raw/2022-01-13/"))
-
-archivos <- list.files(pattern = ".txt$")
-archivos <- archivos[order(file.size(archivos))]
+setwd(paste0(dir,"/",bd, "/raw/2023-01-23/"))
 outDir <- paste0(dir,"/",bd, "/mapped/")
 
 ## #1.column names original files
@@ -56,26 +54,20 @@ finColnames <- c(t(nombres.current[grep('set', nombres.current[, 1]), -1]))
 oriColnames[which(!is.na(finColnames))]
 finColnames[which(!is.na(finColnames))]
 
-
-## #2. Unify files in a unique matrix data 
-un <- NULL
-for (i in 1:length(archivos)){
-  archivo.i <- read.delim(archivos[i], encoding = 'UTF-8', colClasses = 'character', stringsAsFactors = F)
-  archivo.i$date <- paste(archivo.i$yearcollected, archivo.i$monthcollected, archivo.i$daycollecte, sep = '-')
-  archivo.i <- archivo.i[, c(oriColnames[which(!is.na(finColnames))], 'date')]
-  colnames(archivo.i) <- c(finColnames[which(!is.na(finColnames))], 'latestDateCollected')
-  archivo.i$resourceName <- archivos[i]
-  archivo.i$resourceFolder <- paste0(getwd(), '/mapped')
-  archivo.i$resourceIncorporationDate <- Sys.Date()
-  un <- rbind(un, archivo.i)
-  cat(i)
-}
+#matching columns
+archivos <- list.files(pattern = ".txt$")
+specieslink <- fread(archivos[1], encoding = 'UTF-8', quote = "")
+specieslink$eventDate <- paste(specieslink$yearcollected, specieslink$monthcollected, specieslink$daycollected, sep = '-')
+specieslink<-as.data.frame(specieslink)
+specieslink <- specieslink[, c(oriColnames[which(!is.na(finColnames))], 'eventDate')]
+colnames(specieslink) <- c(finColnames[which(!is.na(finColnames))], 'eventDate')
+specieslink$resourceName <- archivos[1]
+specieslink$resourceFolder <- paste0(getwd(), '/mapped')
 
 ###3. Export data set 
-specieslink<- un
-write.csv(un, paste0(outDir,'/speciesLink_', Sys.Date(), '.csv'), row.names = FALSE)
-save(un, file = paste0(outDir,'/speciesLink_', Sys.Date(), '.RData'))
-rm(archivos, archivo.i, i,bd, outDir, nombres.current, na.cols, oriColnames, finColnames, un)
+write.csv(specieslink, paste0(outDir,'/speciesLink_', Sys.Date(), '.csv'), row.names = FALSE)
+save(specieslink, file = paste0(outDir,'/speciesLink_', Sys.Date(), '.RData'))
+rm(archivos, bd, outDir, nombres.current, na.cols, oriColnames, finColnames)
 
 #####
 
@@ -85,14 +77,14 @@ rm(archivos, archivo.i, i,bd, outDir, nombres.current, na.cols, oriColnames, fin
 
 
 bd <- "eBird"
-setwd(paste0(dir,"/",bd, "/raw/2022-01-20/"))
+setwd(paste0(dir,"/",bd, "/raw/2023-01-25/"))
 
 #1. Unzip and liste the files
 list<-list.files(pattern = '.zip')
 for (i in 1:length(list)) {
   unzip(zipfile = list[i])
 }
-archivos2 <- list.files(pattern = "ebd.*.2021.txt$", recursive = T)
+archivos2 <- list.files(pattern = "ebd.*.2022.txt$", recursive = T)
 outDir <- paste0(dir,"/",bd, "/mapped/")
 
 ##2.column names original files
@@ -126,19 +118,19 @@ eb.i<-un2[,c(oriColnames3)]# acotar columnas fuente a columnas del formato
 colnames(eb.i)<- finColnames3
 eb.i$locality <- stringi::stri_encode(eb.i$locality, 'UTF-8') # Ajust loclaity coding  
 
-un2<-cbind(eb.i, un2[,c(49:51)]) #Join columns, with modified records ver1
+un2<-cbind(eb.i, un2[,c(51:54)]) #Join columns, with modified records ver1
 date<- as.data.frame(do.call(rbind, str_split(un2$eventDate, '-')))
 names(date)<- c('year', 'month', 'day')
 un2<-cbind(un2, date) #Join columns, with modified records ver2 
 keep <- which(approv2$CATEGORY == 'species' & approv2$APPROVED == 1)
 un3<- un2[keep,]
+ebird <- un3
 
 ###5. Export data set 
 write.csv(un3, paste0(outDir,'/eBird_', Sys.Date(), '.csv'), row.names = FALSE)
-ebird <- un3
 save(ebird, file = paste0(outDir,'eBird_', Sys.Date(), '.RData'))
 write.csv(approv2, paste0(outDir,'/approv2edCols_', Sys.Date(), '.csv'), row.names = FALSE)
-rm(bd, list,archivos2, outDir, nombres.current2,oriColnames2,finColnames2, oriColnames3, finColnames3, archivo.i, i, keep, approv2, approv2.i, date, un2, un3, eb.i)
+rm(bd, list,archivos2, outDir, nombres.current2,oriColnames2,finColnames2, oriColnames3, finColnames3, archivo.i, i, keep, approv2, approv2.i, date, un2, un3, eb.i);gc()
 
 ########################
 ### Colecciones IAvH ###
