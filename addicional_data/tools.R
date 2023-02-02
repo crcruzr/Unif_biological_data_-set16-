@@ -21,11 +21,14 @@
 # c <- "\"\"\"Euptychia\"\"\""
 #str_replace_all(x, "[^[:alnum:]]", " ")
 
-cleanSciNames  <- function(y){ 
+cleanSciNames  <- function(y){
+  
+
   require(R.utils)
   if (!require(R.utils)) {
     stop("You need to install the 'R.utils' package to use this function")
   }
+  
   (y <- gsub("[[:blank:]]"," ",y))
   (y <- gsub("\n"," ",y))
   (y <- gsub("'","", y))
@@ -66,6 +69,7 @@ cleanSciNames  <- function(y){
     if (!is.na(gregexpr(" ", x)[[1]][2])){
       pos <- gregexpr(" ", x)[[1]][2]
       (x <- substr(x, 0, pos - 1))
+    
     }
     return(capitalize(tolower(x)))
   })
@@ -117,12 +121,12 @@ orig2set16 <- function(file.i, format, Source = NULL, occID = NULL,
     format.i$occurrenceID <- occID#paste0(occID,"-",startID:(startID+nrow(format.i)-1)) #Creo un ID consecutivo
   }
   
-  # Volver formato numirico las variables lat, lon, alt
+  # Volver formato numirico las variables decimalLatitude, decimalLongitude, alt
   if (cleanCoords != TRUE){
-    if (length(which(colnames(format.i) == "lat"))>0){
-      format.i$lat <- as.numeric(format.i$lat); format.i$lon <- as.numeric(format.i$lon)
+    if (length(which(colnames(format.i) == "decimalLatitude"))>0){
+      format.i$decimalLatitude <- as.numeric(format.i$decimalLatitude); format.i$decimalLongitude <- as.numeric(format.i$decimalLongitude)
       # Eliminar los registros que no tengan valores en coordenadas en caso de haber
-      no_coords <- unique(append(which(is.na(format.i$lat)),which(is.na(format.i$lon))))
+      no_coords <- unique(append(which(is.na(format.i$decimalLatitude)),which(is.na(format.i$decimalLongitude))))
       if (length(no_coords)>0) {format.i <- format.i[-no_coords,]}
     }
   }
@@ -168,25 +172,29 @@ grep2 <- function(y, line){
 
 
 overaoi <- function(tabla_final, name, aoi, dir2 = FALSE, noCoordDir = FALSE){
-  # tabla_final <- tabla_final1
-  # name <- 'Ecopetrol'
+  #tabla_final <- tabla_final5
+  ## name <- bd
   #noCoordDir <- 'G:/Cristian_data/Humboldt/Set16/datos_originales/noCoords/'
   tabla_salida <- tabla_final
-  coordinates(tabla_final) =~ lon + lat
-  proj4string(tabla_final)<-crs(aoi)
-  ov.table <- over(tabla_final, aoi)[, 1]
+  cat('Converting matriz to spatial object\n')
+  tabla_final<-vect(tabla_final, geom = c('decimalLongitude', 'decimalLatitude'), crs="+proj=longlat +datum=WGS84")
+  cat('DONE\n')
+
+  ov.table<-extract(aoi, tabla_final)[,-1]
   salida.id <- which(!is.na(ov.table))
   
+  cat('Creating points plot by', name, 'data\n')
   png(paste0(name,'-',Sys.Date(),".png"), width = 1000, height = 700, units = 'px')
   plot(wrld_simpl, xlim = c(-120,120), ylim = c(-80,80), axes=TRUE, col='light yellow', main = name)
   #plot(mapWorld, add=T)
   plot(tabla_final,  col='orange', cex=0.75, pch = 20, add = T)
   plot(aoi, col=rgb(0.5,0.3,0.4,0.1), add=T)
-  points(tabla_salida$lon[salida.id], tabla_salida$lat[salida.id], col='blue', cex=0.5, pch = 20)
+  points(tabla_salida$decimalLongitude[salida.id], tabla_salida$decimalLatitude[salida.id], col='blue', cex=0.5, pch = 20)
   text(x=10, y=-50, name, cex = 3)
   box()  
   dev.off()
-  
+  cat('DONE\n')
+
   dir.create(as.character(Sys.Date()), showWarnings = FALSE)
   
   file.copy(paste0(name,".png"), paste0(Sys.Date(),"/",name,".png"))
@@ -205,8 +213,8 @@ overaoi <- function(tabla_final, name, aoi, dir2 = FALSE, noCoordDir = FALSE){
 }
 
 #textVector <- colnames(archivo.i); from = oriColnames; to = finColnames
-# textVector == colnames(archivo.i); oriColnames == finColnames
-# colnames(archivo.i) == multiReplace(colnames(archivo.i), from = oriColnames, to = finColnames)
+#textVector == colnames(archivo.i); oriColnames == finColnames
+#colnames(archivo.i) == multiReplace(colnames(archivo.i), from = oriColnames, to = finColnames)
 multiReplace <- function(textVector, from, to){
   eq <- which(from != to)
   for (r in 1:length(eq)){
