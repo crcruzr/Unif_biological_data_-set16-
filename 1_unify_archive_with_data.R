@@ -14,7 +14,7 @@ nombres <- read.xlsx("G:/Cristian_data/Humboldt/Git/Unif_biological_data_-set16-
 ######### GBIF###########
 ### 
 ## Open download data to compare with BioModelos Format
-outDir_gbif <- paste0(dir,'/GBIF&SiB/raw/Descarga_2022_01_13_directGBIF/')
+outDir_gbif <- paste0(dir,'/GBIF&SiB/mapped/Descarga_2023_01_23_directGBIF/')
 gbif<-fread (paste0(dir,"/GBIF&SiB/raw/Descarga_2023_01_23_directGBIF/0255995-220831081235567/filteredOcc.txt"), encoding = 'UTF-8') #file with GBIF data
 
 #1 .column names original files
@@ -102,7 +102,7 @@ for (i in 1:length(archivos2)){
   archivo.i <- read.delim(archivos2[i])
   colnames(archivo.i) <- gsub("//."," ",colnames(archivo.i))
   approv2.i <- archivo.i[, c('GLOBAL.UNIQUE.IDENTIFIER', 'APPROVED', 'REVIEWED', 'REASON', 'CATEGORY')]
-  archivo.i$collector <- 'no_collector_information'
+  archivo.i$recordedBy <- 'no_collector_information'
   archivo.i$resourceName <- archivos2[i]
   archivo.i$resourceFolder <- paste0(getwd(), '/mapped')
   archivo.i$resourceIncorporationDate <- Sys.Date()
@@ -125,9 +125,10 @@ un2<-cbind(un2, date) #Join columns, with modified records ver2
 keep <- which(approv2$CATEGORY == 'species' & approv2$APPROVED == 1)
 un3<- un2[keep,]
 ebird <- un3
+names(ebird)[10]<- 'recordedBy'
 
 ###5. Export data set 
-write.csv(un3, paste0(outDir,'/eBird_', Sys.Date(), '.csv'), row.names = FALSE)
+write.csv(ebird, paste0(outDir,'eBird_', Sys.Date(), '.csv'), row.names = FALSE)
 save(ebird, file = paste0(outDir,'eBird_', Sys.Date(), '.RData'))
 write.csv(approv2, paste0(outDir,'/approv2edCols_', Sys.Date(), '.csv'), row.names = FALSE)
 rm(bd, list,archivos2, outDir, nombres.current2,oriColnames2,finColnames2, oriColnames3, finColnames3, archivo.i, i, keep, approv2, approv2.i, date, un2, un3, eb.i);gc()
@@ -175,4 +176,62 @@ save(colecciones, file = paste0(outDir,'coleciones_', Sys.Date(), '.RData'))
 str(colecciones)
 rm(bd, outDir, nombres.current2, oriColnames2, finColnames2, archivos, x, archivo.i, date, i, finColnames3,oriColnames3)
 
-##### END Step 0 ###########
+
+######################
+### Datos I2D IAvH ###
+######################
+
+bd <- "Biota-I2D"
+setwd(paste0( dir,"/Biota-I2D","/"))
+outDir <- paste0(dir,"/",bd, "/mapped/")
+data_I2D<-readRDS("2020-04-20/BIOMODELOS_CEIBA_20200330.rds")#datos originales
+
+#1 .column names original files
+nombres.current <-nombres[grep('i2d', nombres[, 1]), -1]
+na.cols <- is.na(nombres.current[1, ])
+nombres.current <- nombres.current[, !na.cols ]
+oriColnames <- c(t(nombres.current[grep('originales', nombres.current[, 1]), -1]))
+finColnames <- c(t(nombres.current[grep('set', nombres.current[, 1]), -1]))
+oriColnames[which(!is.na(finColnames))]
+finColnames[which(!is.na(finColnames))]
+
+###2. Unify files in a unique matrix data 
+i2d <- data_I2D[,colnames(data_I2D) %in% oriColnames]
+i2d<- i2d[,oriColnames]
+colnames(i2d)<- finColnames #columnas unificacion, que coinciden con formato final set16
+i2d$downloadDate <- '2020-04-20'
+i2d$resourceFolder <- 'D/Set16/datos_originales/Biota-I2D/mapped/'
+i2d$resourceIncorporationDate <- '2023-02-01'
+
+save(i2d, file = paste0(outDir,'i2d_', Sys.Date(), '.RData'))
+
+rm(i2d, bd, outDir, nombres.current, oriColnames, finColnames, na.cols, archivos, x, archivo.i, date, i, data_I2D)
+
+##############
+#### ANLA ####
+#############
+bd <- "ANLA"
+setwd(paste0(dir,  "/", bd, "/raw/"))
+outDir <- paste0(dir,"/",bd, "/mapped/")
+load("datos_GDB_ANLA_en_DwC_&_WGS84.RData")
+
+#1 .column names original files
+nombres.current <-nombres[grep('ANLA_dep', nombres[, 1]), -1]
+na.cols <- is.na(nombres.current[2, ])
+nombres.current <- nombres.current[, !na.cols ]
+oriColnames <- c(t(nombres.current[grep('originales', nombres.current[, 1]), -1]))
+finColnames <- c(t(nombres.current[grep('set 16', nombres.current[, 1]), -1]))
+oriColnames[which(!is.na(finColnames))]
+finColnames[which(!is.na(finColnames))]
+
+
+###2. Unify files in a unique matrix data 
+anla <- datos_GDB_ANLA[,colnames(datos_GDB_ANLA) %in% finColnames]
+anla<- anla[,oriColnames]
+colnames(anla)<- oriColnames  #columnas unificacion, que coinciden con formato final set16
+anla$downloadDate <- '2020-04-20'
+anla$resourceFolder <- 'D/Set16/datos_originales/ANLA/mapped'
+anla$resourceIncorporationDate <- '2023-02-01'
+save(anla, file = paste0(outDir,'anla_', Sys.Date(), '.RData'))
+
+##### END Step  ###########
