@@ -65,7 +65,8 @@ gbif$downloadDate <- '2022-01-13'
 #names(gbif)[2]<- 'associatedReferences'
 gbif$associatedReferences  <- 'Downloaded from GBIF'
 gbif$privateData <- 0
-gbif<-gbif[,-2]
+gbif<-gbif[,-2] # Elimiar columna source, si esta aparece aquí
+gbif<-gbif[,-22] # revisar si es una columna duplicada
 
 #2. Delete data outside the study region, Scientific Name author name and eBird records.
 gbif <- subset(gbif, gbif$decimalLongitude > -83 & gbif$decimalLongitude < -60 &
@@ -74,7 +75,6 @@ nrow(gbif) # 44129303
 gbif <- subset(gbif, gbif$collection != 'EBIRD') 
 nrow(gbif) # 17517838
 gc()
-system.time(gbif$scientificName<- cleanSciNames(gbif$scientificName)) #1841.22 
 
 #3. Create Set16 matrix and add GBIF records
 gbif.i <- as.data.frame(matrix(NA, ncol = ncol(emptyFormat), nrow = nrow(gbif)))
@@ -82,6 +82,8 @@ colnames(gbif.i) <- colnames(emptyFormat)
 comCols <- colnames(gbif)[colnames(gbif) %in% colnames(emptyFormat)]#columns matching end format set16
 gbif.i[, comCols] <- gbif[,comCols] # join base layer with input data
 gbif<-gbif.i
+gbif$verbatimIdentification<- gbif$scientificName
+system.time(gbif$scientificName<- cleanSciNames(gbif$scientificName)) #1841.22 
 gbif$ID<-as.character(gbif$ID)
 
 #4. Save data
@@ -113,10 +115,11 @@ tabla_final1 <- rbind(tabla_final1, eb.i)
 
 #2. Create Set16 matrix and add records
 tablafinal1 <- overaoi(tabla_final1, bd, aoi, dir2, noCoordDir = noCoordOutDir)
-tablafinal1 <- subset(tablafinal1, tablafinal1$decimalLongitude > ext(aoi)[1] & tablafinal1$decimalLongitude < ext(aoi)[2] &
-                tablafinal1$decimalLatitude > ext(aoi)[3] & tablafinal1$decimalLatitude < ext(aoi)[4])
+tablafinal1 <- subset(tabla_final1, tabla_final1$decimalLongitude > ext(aoi)[1] & tabla_final1$decimalLongitude < ext(aoi)[2] &
+                        tabla_final1$decimalLatitude > ext(aoi)[3] & tabla_final1$decimalLatitude < ext(aoi)[4])
+tablafinal1$verbatimIdentification<- tablafinal1$scientificName
 tablafinal1$scientificName <- cleanSciNames(tablafinal1$scientificName)
-tablafinal1$ID <- paste0(tablafinal1$institutionCode, '_rec_',seq(1, nrow(tabla_final1)), '_ebird') # 5M de espacio
+tablafinal1$ID <- paste0(tablafinal1$institutionCode, '_rec_',seq(1, nrow(tablafinal1)), '_ebird') # 5M de espacio
 
 #4. Save data
 save(tablafinal1, nRowTF1, file = paste0(bd,"_set0.RData"))
@@ -144,15 +147,16 @@ sp.i[, comCols] <- specieslink[, comCols]
 sp.i$privateData <- 0
 sp.i$downloadDate <- '2023-01-23'
 sp.i$associatedReferences  <- 'Downloaded from SpeciesLink'
-tabla_final2 <- rbind(tabla_final2, sp.i)
+tablafinal2 <- rbind(tabla_final2, sp.i)
 
 #3. Delete data outside the study region, and ajust Scientific Name.
 tablafinal2 <- overaoi(tabla_final2, bd, aoi, dir2, noCoordDir = noCoordOutDir)
 tablafinal2 <- subset(tablafinal2, tablafinal2$decimalLongitude > ext(aoi)[1] & tablafinal2$decimalLongitude < ext(aoi)[2] &
                 tablafinal2$decimalLatitude > ext(aoi)[3] & tablafinal2$decimalLatitude < ext(aoi)[4])
-nrow(spl) #1339655
+nrow(tablafinal2) #1339655
 tablafinal2$occurrenceID <- paste0('specieslink', 1:nrow(tablafinal2))
 tablafinal2$ID <- paste0(tablafinal2$institutionCode, '_rec_',seq(1, nrow(tablafinal2)), '_SpeciesLink') # 5M de espacio
+tablafinal2$verbatimIdentification<- tablafinal2$scientificName
 tablafinal2$scientificName <- cleanSciNames(tablafinal2$scientificName)
 
 #4. Save data
@@ -198,6 +202,8 @@ tabla_final3 <- rbind(tabla_final3, i2d.i)
 tablafinal3 <- overaoi(tabla_final3, bd, aoi, dir2, noCoordDir = noCoordOutDir)
 tablafinal3 <- subset(tablafinal3, tablafinal3$decimalLongitude > ext(aoi)[1] & tablafinal3$decimalLongitude < ext(aoi)[2] &
                         tablafinal3$decimalLatitude > ext(aoi)[3] & tablafinal3$decimalLatitude < ext(aoi)[4])
+
+tablafinal3$verbatimIdentification<- tablafinal3$scientificName
 tablafinal3$scientificName <- cleanSciNames(tablafinal3$scientificName)
 tablafinal3$associatedReferences  <- 'Obtained from I2D - IAvH'
 
@@ -231,9 +237,10 @@ tabla_final4 <- rbind(tabla_final4, anla.i)
 
 #3. Delete data outside the study region, and ajust Scientific Name.
 tablafinal4 <- overaoi(tabla_final4, bd, aoi, dir2, noCoordDir = noCoordOutDir)
-tablafinal4 <- tabla_final4[!is.na(tablafinal4$species),]
+tablafinal4 <- tablafinal4[!is.na(tablafinal4$scientificName),]
 tablafinal4 <- subset(tablafinal4, tablafinal4$decimalLongitude > ext(aoi)[1] & tablafinal4$decimalLongitude < ext(aoi)[2] &
                   tablafinal4$decimalLatitude > ext(aoi)[3] & tablafinal4$decimalLatitude < ext(aoi)[4])
+tablafinal4$verbatimIdentification<- tablafinal4$scientificName
 tablafinal4$scientificName <- cleanSciNames(tablafinal4$scientificName)
 tablafinal4$ID <-paste0(tablafinal4$institutionCode, '_rec_',seq(1, nrow(tablafinal4)), '_Anla')
 tablafinal4$privateData <- 1
@@ -250,8 +257,8 @@ rm(anla.i, anla, tabla_final4); gc()
 # 1. Ajust and add data 
 bd <- "Colecciones_IAvH"
 setwd(paste0('/Set16/datos_originales/',bd,"/"))
-load("mapped/coleciones_2023-01-26.RData") # 
-nRowTF5<-nrow(colecciones) #384831
+load("mapped/coleciones_2023-02-08.RData") # 
+nRowTF5<-nrow(colecciones) #415460
 tabla_final5 <- emptyFormat
 str(colecciones$decimalLatitude)
 colecciones$decimalLatitude<-as.numeric(colecciones$decimalLatitude)
@@ -261,7 +268,7 @@ colecciones<- colecciones[!is.na(colecciones$decimalLongitude),]
 str(colecciones$decimalLatitude)
 
 #2. Create Set16 matrix and add records
-nrow(colecciones) #299582
+nrow(colecciones) #329721
 colecciones.i <- as.data.frame(matrix(NA, ncol = ncol(emptyFormat), nrow = nrow(colecciones)))
 colnames(colecciones.i) <- colnames(emptyFormat)
 comCols <- colnames(colecciones)[colnames(colecciones) %in% colnames(emptyFormat)]#columnas unificacion, que coinciden con formato final set16
@@ -269,14 +276,15 @@ colecciones.i[, comCols] <- colecciones[, comCols] #coleccionesir capa base con 
 colecciones.i$species<- colecciones.i$speciesOriginal
 colecciones.i$privateData<-0
 tabla_final5 <- rbind(tabla_final5, colecciones.i)
-tablafinal5$associatedReferences  <- 'Obtained from Colecciones IAvH'
-tablafinal5$institutionCode <- 'IAvH'
-tabla_final5$downloadDate<-'22-02-2022'
+tabla_final5$associatedReferences  <- 'Obtained from Colecciones IAvH'
+tabla_final5$institutionCode <- 'IAvH'
+tabla_final5$downloadDate<-'07-02-2022'
 
 #3. Delete data outside the study region, and ajust Scientific Name.
 tablafinal5 <- overaoi(tabla_final5, bd, aoi, dir2, noCoordDir = noCoordOutDir)# Pendiente evaluar porque no fcoleccionesciona
 tablafinal5 <- subset(tablafinal5, tablafinal5$decimalLongitude > ext(aoi)[1] & tablafinal5$decimalLongitude < ext(aoi)[2] &
                         tablafinal5$decimalLatitude > ext(aoi)[3] & tablafinal5$decimalLatitude < ext(aoi)[4])
+tablafinal5$verbatimIdentification<- tablafinal5$scientificName
 tablafinal5$scientificName <- cleanSciNames(tablafinal5$scientificName)
 tablafinal5$ID <-paste0(tablafinal5$institutionCode, '_rec_',seq(1, nrow(tablafinal5)), '_col_IAvH')
 

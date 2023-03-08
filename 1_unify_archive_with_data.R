@@ -138,7 +138,7 @@ rm(bd, list,archivos2, outDir, nombres.current2,oriColnames2,finColnames2, oriCo
 #######################
 
 bd <- "Colecciones_IAvH"
-setwd(paste0(dir,"/",bd, "/raw/2022/"))
+setwd(paste0(dir,"/",bd, "/raw/2023/"))
 outDir <- paste0(dir,"/",bd, "/mapped/")
 
 #1 .column names original files
@@ -168,7 +168,7 @@ date<- as.data.frame(do.call(rbind, str_split(x$eventDate, '-')))
 names(date)<- c('year', 'month', 'day')
 x<-cbind(x, date) #unir columnas loop, con variables ajustadas 
 
-write.csv(x, paste0(outDir,'/colecciones_', Sys.Date(), '.csv'), row.names = FALSE)
+write.csv(x, paste0(outDir,'colecciones_', Sys.Date(), '.csv'), row.names = FALSE)
 colecciones <- x
 save(colecciones, file = paste0(outDir,'coleciones_', Sys.Date(), '.RData'))
 #load(paste0(outDir,'coleciones_', Sys.Date(), '.RData'))
