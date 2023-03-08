@@ -225,3 +225,74 @@ multiReplace <- function(textVector, from, to){
   }
   return(textVector)
 }
+
+##Function for add taxonRank in Data Frame
+
+#By: Cristian Cruz-Rodr[i]guez 
+#Date: 2-12-2022
+
+' Revisa las columnas taxonómicas e indica el nivel taxonómico de la determinación
+#' 
+#' @param x matriz de datos en formato Data Frame
+#' @return matriz de datos con la validación del nivel taxonómico de la informaci[o]n suministrada
+#' @examples
+#' @details requiere la la matriz de datos tenga las columnas scientificName, specificEpithet, genus, family, order, phylum y kingdom con los mismos nombres
+
+taxrank <- function(x) {
+  library(stringi)
+  
+  if(!class(x)== 'data.frame')
+    stop('add table  in data frame format')
+  else{
+    
+    ### remove spaces in matriz
+    cat('remove spaces in matriz  ')
+    for (h in 1:ncol(x)) {
+      x[,h]<- trimws(x[,h])
+    }
+    cat('DONE \n')
+    if(!"verbatimIdentification" %in% colnames(x)){
+      colnames(x)[colnames(x) == "scientificName"] ="verbatimIdentification"
+      x$scientificName<- ''
+    } else NULL
+    
+    
+    x[x == ""] <- NA
+    cat('Review Taxon Rank for',nrow(x), 'records \n')
+    progress_bar = txtProgressBar(min=0, max=nrow(x), style = 3, char="=")
+    for (i in 1:nrow(x)) {
+      ifelse(((is.na(x[i,'verbatimIdentification'])) && (!is.na(x[i,'scientificName']))), (x[i,'verbatimIdentification'] <- x[i,'scientificName']), NA )
+      
+      if (!is.na(x[i,'specificEpithet'])){
+        x[i,'scientificName'] <-paste(x[i,'genus'], x[i,'specificEpithet'])
+        x[i,'taxonRank'] <-'specie'
+      } else if ((!is.na(x[i,'genus'])) && (is.na(x[i,'specificEpithet']))) {
+        x[i,'scientificName'] <-x[i,'genus']
+        x[i,'taxonRank'] <-'genus'
+      }else if (!is.na(x[i,'family'])) {
+        x[i,'scientificName'] <-x[i,'family']
+        x[i,'taxonRank'] <-'family'
+      }else if (!is.na(x[i,'order'])) {
+        x[i,'scientificName'] <-x[i,'order']
+        x[i,'taxonRank'] <-'order'
+      }else if (!is.na(x[i,'class'])) {
+        x[i,'scientificName'] <-x[i,'class']
+        x[i,'taxonRank'] <-'class'
+      }else if (!is.na(x[i,'phylum'])) {
+        x[i,'scientificName'] <-x[i,'phylum']
+        x[i,'taxonRank'] <-'phylum'
+      }else if (!is.na(x[i,'kingdom'])) {
+        x[i,'scientificName'] <-x[i,'kingdom']
+        x[i,'taxonRank'] <-'kingdom'
+      } else if (is.na(x[i,'kingdom'])) {
+        x[i,'scientificName'] <- 'negative'
+        x[i,'taxonRank'] <-'negative'  
+        
+      }
+      setTxtProgressBar(progress_bar, value = i) 
+    }
+    close(progress_bar)
+    return(x)
+  }
+}
+
