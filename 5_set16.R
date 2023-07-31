@@ -1,49 +1,53 @@
+
+#--------------------------------------------#
+#  1. Load packages, dataset,  and routines  # 
+#--------------------------------------------# 
 library(CoordinateCleaner)
+library(terra)
+library(data.table)
 
 RoutineType <- routineType <- 'Colombia'
-
-## Para proceso del set16: 
-# Load 
-setwd('G:/Cristian_data/Humboldt/Set16/')
+setwd('D:/Set16/')
 load('./set2/set2.RData')
+source('set16/verifGeo/script.R')
+load('set16/verifGeo/Colombia.RData')
 
-setwd('G:/Cristian_data/Humboldt/Set16/set16/verifGeo/')
-source('script.R')
-load('Colombia.RData')
-
-set2 <- as.data.frame(set2)
+#--------------------------#
+#  2. Add column to match  #
+#--------------------------#
 
 set2$scriptID <- 1:nrow(set2)
-set3 <- set2[, c("scriptID", "acceptedNameUsage", "country", "adm1", "adm2", "lat", "lon")]
-#set3 <- set2[, c("scriptID", "acceptedNameUsage", "Pais", "Departamento", "Municipio", "lat", "lon")]
+set3 <- set2[, c("scriptID", "scientificName", "country", "stateProvince", "municipality", "decimalLatitude", "decimalLongitude")]
 colnames(set3) <- c("scriptID", "nombre", "pais", "departamento", "municipio", "latitud", "longitud")
 
+#Piloto para evaluar que la matriz de datos estÃ© funcionando bien
+#set3A<- rbind((head(set3, 10000)), (tail(set3, 10000)))
+
+#-------------------------------------------------------------------#
+#  3. Verify countries, states, counties, altitude, dup in records  #
+#-------------------------------------------------------------------#
 # Requieres 'set2', 'set3' and 'routineType'
 system.time(verif <- VERIFICACION_PAISES(set3, routineType = RoutineType, rdata = TRUE)) #205310.22
+set16<-verif$set16
 
-set16$correctstateProvince<- ifelse(set16$departamento == set16$suggestedStateProvince, 1, 0)
-set16$correctstateProvince[is.na(set16$correctstateProvince)] <- 0
+#--------------------------------------#
+#  4. Manual ajust to country names  #
+#--------------------------------------#
+col<- c('CO', 'Colombia', 'Colombie', 'COLOMBIA', 'ColÃ´mbia', 'Colombia ', ' colombia', 'colombia')
+bo<- c('Bolivia', 'BolÃ­via', 'BO', 'BolÃ­via', 'Bolivie')
+br<- c('BR', 'Brasil', 'BRASIL', 'brazil', 'Brazil', 'BRAZIL', 'Bradil')
+ec<- c('EC', 'Ecuador', 'ECUADOR', 'Equador', 'EQUADOR', 'Equateur', 'Equateur')
+pa<-c('Gulf of Panama', 'PA', 'Panama', 'PnamÃ¡')
+pe<-c('PE', 'Perou', 'P?rou', 'Peru', 'PERU', 'PerÃº')
+ve<- c('VE', 'venezuela', 'Venezuela', 'VENEZULA', 'V?n?zuela', 'V?n?zu?la' ,' VENEZUELA')
 
-set16$correctCounty[is.na(set16$correctCounty)] <- 0
-set16$correctCounty<- ifelse(set16$county == set16$suggestedCounty,1,0)
 
-##ajustar nombres países
-col<- c('CO', 'Colombia', 'Colombie', 'COLOMBIA', 'Colômbia', 'Colombia ', ' colombia')
-bo<- c('Bolivia', 'Bolívia', 'BO', 'BOLÍVIA', 'Bolivie')
-br<- c('BR', 'Brasil', 'BRASIL', 'brazil', 'Brazil', 'BRAZIL', 'Brésil')
-ec<- c('EC', 'Ecuador', 'ECUADOR', 'Equador', 'EQUADOR', 'Equateur', 'Équateur')
-pa<-c('Gulf of Panama', 'PA', 'Panama', 'Panamá')
-pe<-c('PE', 'Perou', 'Pérou', 'Peru', 'PERU', 'Perú')
-ve<- c('VE', 'venezuela', 'Venezuela', 'VENEZULA', 'Vénézuela', 'Vénézuéla' ,' VENEZUELA')
-
-dr<-set16
-#set16 <- dr
 table(set16$pais)
-
 nrow(set16)
 set16.a<- set16[set16$pais %in% col,]
 set16.a$pais<-'Colombia'
 set16.b<- set16[!set16$pais %in% col,]
+table(set16.b$pais)
 set16<-rbind(set16.a, set16.b)
 nrow(set16)
 
@@ -99,7 +103,7 @@ nrow(set16)
 set16.a<- set16[set16$pais %in% 'CW',]
 set16.b<- set16[!set16$pais %in% 'CW',]
 nrow(set16.a) + nrow(set16.b)
-set16.a$pais<- 'Curaçao'
+set16.a$pais<- 'Curazao'
 set16<-rbind(set16.a, set16.b)
 nrow(set16)
 
@@ -118,27 +122,28 @@ set16<-rbind(set16.a, set16.b)
 nrow(set16)
 
 table(set16$pais)
-set16$correctCountry<- ifelse(set16$pais == set16$suggestedCountry, 1, 0)
-set16$correctCountry[is.na(set16$correctCountry)] <- 0
-set16$alt[is.na(set16$alt)] <- 0
-set16$extremo[is.na(set16$extremo)] <- 0
 
-
-set16<- merge(set2, set16[c(1,10:22)], by ='scriptID', all = T)
-
+#------------------------------------------------#
+#  5. match between correct state ans counties   #
+#------------------------------------------------#
+set16$correctstateProvince<- ifelse(set16$departamento == set16$suggestedStateProvince, 1, 0)
+set16$correctstateProvince[is.na(set16$correctstateProvince)] <- 0
+set16$correctCounty[is.na(set16$correctCounty)] <- 0
+set16$correctCounty<- ifelse(set16$municipio == set16$suggestedCounty,1,0)
+set16$alt[is.na(set16$alt)] <- NA
+set16$extremo[is.na(set16$extremo)] <- NA
+set16<- merge(set2, set16[c(1,8:22)], by ='scriptID', all = T)
 dt<-ls()
 dt<-(dt[!grepl('set16', dt)])
 rm(list = dt); rm(dt); gc()
 
-### Identificar los datos erroneso por especie y generaciÃ³n de mapas para cada uno de ellos
-## evaluaci[o]n de coordenadas por: a) Centroide, b) OcÃ©nao, c) registros idÃ©nticos entre el set de datos, d)centroide de GBIF, e) centroide de museos de HN, f) las coordenadas son ceros absolutos, g) las coordenadas son duplicados
-
-
-land<- readOGR("G:/Cristian_data/Humboldt/capas base/politico/world/10m_admin_0_countries.shp")
-
-set16 <- clean_coordinates(x = set16, lon = "lon", lat = "lat",
+#---------------------------------------------#
+#  6.  Add flags coordinate cleaner package   #
+#---------------------------------------------#
+land<- vect("maps/10m_admin_0_countries.shp")
+set16 <- clean_coordinates(x = set16, lon = "decimalLongitude", lat = "decimalLatitude",
                            countries = "country", 
-                           species = "species",
+                           species = "scientificName",
                            tests = c("capitals" , "centroids", "seas", "equal","gbif", "institutions", "zeros", "duplicates"),
                            centroids_rad 	= 10, ##10 meters buffer
                            seas_ref = land, # shp to land area
@@ -146,7 +151,6 @@ set16 <- clean_coordinates(x = set16, lon = "lon", lat = "lat",
                            country_ref=world)
 
 set16<-as.data.frame(set16)
-##Unify evaluation with politico-administrative flags
 set16$.val<- ifelse(set16$.val == 'TRUE',0,1)
 set16$.equ<- ifelse(set16$.equ == 'TRUE',0,1)
 set16$.zer<- ifelse(set16$.zer == 'TRUE',0,1)
@@ -157,16 +161,17 @@ set16$.gbf<- ifelse(set16$.gbf == 'TRUE',0,1)
 set16$.inst<- ifelse(set16$.inst == 'TRUE',0,1)
 set16$.dpl<- ifelse(set16$.dpl == 'TRUE',0,1)
 set16$.summary<- ifelse(set16$.summary == 'TRUE',0,1)
-
 colnames(set16)  
-colnames(set16)[56:65]<-c('coord.validity', 'equal.lat/lon', 'Zero.in.coords', 'cap.centroid', 'dept/country.centroid', 'in.sea', 'gbif.centroid', 'institution.centroid', 'dupl.record', 'summary')
+colnames(set16)[65:74]<-c('coord.validity', 'equal.lat/lon', 'Zero.in.coords', 'cap.centroid', 'dept/country.centroid', 'in.sea', 'gbif.centroid', 'institution.centroid', 'dupl.record', 'summary')
 
+#--------------------------#
+#  7.  Save set16 dataset  #
+#--------------------------#
+setwd('D:/Set16/Set16/')
 write.csv(set16, row.names = FALSE, fileEncoding = 'UTF-8', 
-          'G:/Cristian_data/Humboldt/Set16/set16/set16.csv')
-
-setwd('G:/Cristian_data/Humboldt/Set16/set16/')
-
-save.image(set16, file = paste0('set16_',Sys.Date(), '.RData'))
+          'D:/Set16/set16/set16.csv')
+save(set16, file = paste0('set16_',Sys.Date(), '.RData'))
+save(set16, file = paste0('set16.RData'))
 
 ################
 ## set16 Done ##
